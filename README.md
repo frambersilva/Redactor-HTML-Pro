@@ -1,7 +1,7 @@
 # Redactor-HTML-Pro
 Webapp para redactar articulos para Blogger y Wordpress
 
-<img src="/static/static.png" alt="redactor html pro" width="600" height="400" />
+<img src="/static/static.png" alt="redactor html pro"  height="400" />
 
 
 # Invitame un cafe
