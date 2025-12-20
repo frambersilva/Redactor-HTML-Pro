@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Redactor HTML Pro<</title>
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- VARIABLES DE TEMA --- */
+        :root {
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --bg-body: #f8fafc;
+            --bg-panel: #ffffff;
+            --bg-sidebar: #f1f5f9;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --code-bg: #1e293b;
+            --toast-bg: #0f172a;
+            --toast-text: #ffffff;
+            --input-placeholder: #94a3b8;
+        }
+
+        [data-theme="dark"] {
+            --primary: #60a5fa;
+            --primary-hover: #3b82f6;
+            --bg-body: #020617;
+            --bg-panel: #0f172a;
+            --bg-sidebar: #1e293b;
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --code-bg: #02040a;
+            --toast-bg: #ffffff;
+            --toast-text: #0f172a;
+            --input-placeholder: #475569;
+        }
+
+        * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            margin: 0; font-family: 'Inter', sans-serif;
+            background: var(--bg-body); height: 100vh;
+            color: var(--text-main); display: flex; overflow: hidden;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        /* --- TOASTS --- */
+        #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { background: var(--toast-bg); color: var(--toast-text); padding: 14px 24px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 12px; min-width: 280px; animation: slideIn 0.3s forwards; font-size: 0.95rem; font-weight: 500; pointer-events: auto; border-left: 5px solid var(--primary); }
+        .toast.error { border-left-color: #ef4444; }
+        @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes fadeOut { to { transform: translateX(100%); opacity: 0; } }
+
+        /* --- LAYOUT --- */
+        .app-wrapper { display: flex; width: 100%; height: 100%; position: relative; }
+
+        /* SIDEBAR */
+        aside {
+            width: 280px; background: var(--bg-sidebar); border-right: 1px solid var(--border);
+            padding: 1.5rem; display: flex; flex-direction: column;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 100;
+        }
+
+        .brand { font-size: 1.5rem; font-weight: 700; color: var(--primary); margin-bottom: 2rem; display: flex; align-items: center; gap: 10px; }
+
+        .btn-new {
+            background: var(--primary); color: white; border: none; padding: 12px;
+            border-radius: 8px; font-weight: 600; cursor: pointer;
+            display: flex; justify-content: center; gap: 8px; margin-bottom: 1rem;
+            transition: background 0.2s;
+        }
+        .btn-new:hover { background: var(--primary-hover); }
+
+        .file-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex: 1; margin-bottom: 1rem; }
+        .file-item {
+            padding: 12px; margin-bottom: 8px; border-radius: 8px; cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center;
+            color: var(--text-main); border: 1px solid transparent; transition: all 0.2s;
+        }
+        .file-item:hover { background: rgba(59, 130, 246, 0.1); }
+        .file-item.active { background: rgba(59, 130, 246, 0.15); border-color: var(--primary); }
+        .file-info strong { display: block; font-size: 0.9rem; margin-bottom: 2px; }
+        .file-info small { color: var(--text-muted); font-size: 0.75rem; }
+        .delete-btn { background: none; border: none; color: #ef4444; cursor: pointer; padding: 8px; opacity: 0.6; }
+        .file-item:hover .delete-btn { opacity: 1; }
+
+        /* NUEVA SECCIÓN DE BACKUP */
+        .backup-section {
+            border-top: 1px solid var(--border);
+            padding-top: 1rem;
+            display: flex;
+            gap: 10px;
+        }
+        .btn-backup {
+            flex: 1;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            display: flex; flex-direction: column; align-items: center; gap: 5px;
+            transition: all 0.2s;
+        }
+        .btn-backup:hover { background: rgba(0,0,0,0.05); border-color: var(--text-muted); }
+        .btn-backup i { font-size: 1rem; color: var(--primary); }
+
+        /* MAIN */
+        main {
+            flex: 1; display: flex; flex-direction: column;
+            background: var(--bg-panel); position: relative; width: 100%;
+        }
+
+        .top-bar {
+            padding: 10px 1.5rem; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; gap: 1rem; background: var(--bg-panel); height: 65px;
+        }
+
+        .menu-toggle { display: none; background: none; border: none; font-size: 1.3rem; color: var(--text-main); cursor: pointer; padding: 5px; }
+
+        input.doc-title { flex: 1; font-size: 1.1rem; font-weight: 600; border: none; background: transparent; color: var(--text-main); padding: 5px; min-width: 0; }
+        input.doc-title::placeholder { color: var(--input-placeholder); font-weight: 400; }
+
+        .actions-right { display: flex; gap: 8px; align-items: center; }
+        
+        .btn-icon {
+            background: transparent; border: 1px solid var(--border);
+            color: var(--text-main); width: 40px; height: 40px; border-radius: 8px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+        }
+        .btn-icon:hover { color: var(--primary); border-color: var(--primary); }
+
+        .btn-save {
+            background: var(--primary); color: white; border: none;
+            padding: 0 16px; height: 40px; border-radius: 8px; font-weight: 500;
+            cursor: pointer; display: flex; align-items: center; gap: 8px; white-space: nowrap;
+        }
+        .btn-save:hover { background: var(--primary-hover); }
+
+        /* WORKSPACE */
+        .workspace { display: flex; flex: 1; overflow: hidden; }
+        .editor-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        #editor { flex: 1; border: none; font-size: 1.05rem; background: var(--bg-panel); color: var(--text-main); }
+        
+        .ql-toolbar { border: none !important; border-bottom: 1px solid var(--border) !important; background: var(--bg-panel); flex-wrap: wrap; }
+        .ql-toolbar .ql-stroke { stroke: var(--text-main) !important; }
+        .ql-toolbar .ql-fill { fill: var(--text-main) !important; }
+        .ql-toolbar .ql-picker { color: var(--text-main) !important; }
+        
+        .code-container { width: 40%; background: var(--code-bg); border-left: 1px solid var(--border); display: flex; flex-direction: column; }
+        .code-header {
+            padding: 10px 15px; background: rgba(0,0,0,0.2); color: #94a3b8;
+            font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .code-btn { background: rgba(255,255,255,0.1); border: none; color: white; padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; margin-left: 5px; }
+
+        textarea#html-output {
+            flex: 1; background: var(--code-bg); color: #a5b4fc;
+            border: none; padding: 1.5rem; resize: none;
+            font-family: 'Consolas', monospace; font-size: 13px; line-height: 1.5; white-space: pre-wrap;
+        }
+
+        .overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 90; opacity: 0; transition: opacity 0.3s; }
+        .overlay.open { display: block; opacity: 1; }
+
+        /* RESPONSIVE */
+        @media (max-width: 900px) {
+            aside { position: fixed; top: 0; left: 0; height: 100%; transform: translateX(-100%); box-shadow: 4px 0 15px rgba(0,0,0,0.2); }
+            aside.open { transform: translateX(0); }
+            .menu-toggle { display: block; }
+            .workspace { flex-direction: column; }
+            .editor-container { flex: none; height: 55%; }
+            .code-container { width: 100%; height: 45%; border-left: none; border-top: 1px solid var(--border); }
+            .btn-save span { display: none; } .btn-save { padding: 0 12px; }
+        }
+        @media (max-width: 480px) {
+            .ql-toolbar button { padding: 3px 5px; width: 24px; }
+            .editor-container { height: 50%; } .code-container { height: 50%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="toast-container"></div>
+    <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+    <input type="file" id="importInput" style="display: none;" accept=".json" onchange="importData(this)">
+
+    <div class="app-wrapper">
+        <aside id="sidebar">
+            <div class="brand"><i class="fas fa-layer-group"></i> Redactor HTML Pro<</div>
+            <button class="btn-new" onclick="createNewDraft()"><i class="fas fa-plus"></i> Nuevo</button>
+            <ul class="file-list" id="fileList"></ul>
+            
+            <div class="backup-section">
+                <button class="btn-backup" onclick="exportData()" title="Descargar archivo de respaldo">
+                    <i class="fas fa-cloud-download-alt"></i> Exportar
+                </button>
+                <button class="btn-backup" onclick="document.getElementById('importInput').click()" title="Cargar archivo de respaldo">
+                    <i class="fas fa-cloud-upload-alt"></i> Restaurar
+                </button>
+            </div>
+        </aside>
+
+        <main>
+            <div class="top-bar">
+                <button class="menu-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+                <input type="text" class="doc-title" id="docTitle" placeholder="Nombre del proyecto...">
+                <div class="actions-right">
+                    <button class="btn-icon" onclick="toggleTheme()"><i class="fas fa-moon" id="themeIcon"></i></button>
+                    <button class="btn-save" onclick="saveCurrentDraft()"><i class="fas fa-save"></i> <span>Guardar</span></button>
+                </div>
+            </div>
+
+            <div class="workspace">
+                <div class="editor-container">
+                    <div id="editor"></div>
+                </div>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span>HTML</span>
+                        <div>
+                            <button class="code-btn" id="compressBtn" onclick="toggleCompression()"><i class="fas fa-compress-alt"></i></button>
+                            <button class="code-btn" onclick="copyToClipboard()"><i class="far fa-copy"></i></button>
+                        </div>
+                    </div>
+                    <textarea id="html-output" readonly></textarea>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    <script>
+        // --- TOASTS ---
+        function showNotification(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            let icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<i class="fas ${icon}"></i> <span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.animation = 'fadeOut 0.3s ease forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // --- THEME ---
+        const themeIcon = document.getElementById('themeIcon');
+        function initTheme() {
+            if (localStorage.getItem('theme') === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                themeIcon.classList.replace('fa-moon', 'fa-sun');
+            }
+        }
+        function toggleTheme() {
+            if (document.documentElement.getAttribute('data-theme') === 'dark') {
+                document.documentElement.removeAttribute('data-theme');
+                localStorage.setItem('theme', 'light');
+                themeIcon.classList.replace('fa-sun', 'fa-moon');
+                showNotification('Modo Claro');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+                themeIcon.classList.replace('fa-moon', 'fa-sun');
+                showNotification('Modo Oscuro');
+            }
+        }
+        initTheme();
+
+        // --- BACKUP SYSTEM (EXPORT/IMPORT) ---
+        function exportData() {
+            const data = localStorage.getItem('webcrafter_final_db');
+            if (!data || data === '[]') {
+                showNotification('No hay datos para exportar', 'error');
+                return;
+            }
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `webcrafter_backup_${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showNotification('Copia de seguridad descargada');
+        }
+
+        function importData(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const json = JSON.parse(e.target.result);
+                    if (Array.isArray(json)) {
+                        localStorage.setItem('webcrafter_final_db', JSON.stringify(json));
+                        renderSidebar();
+                        createNewDraft(); // Reset view
+                        showNotification('Datos restaurados correctamente');
+                    } else {
+                        throw new Error('Formato inválido');
+                    }
+                } catch (error) {
+                    showNotification('Error: Archivo inválido', 'error');
+                }
+            };
+            reader.readAsText(file);
+            input.value = ''; // Reset input
+        }
+
+        // --- SIDEBAR ---
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('overlay').classList.toggle('open');
+        }
+
+        // --- QUILL EDITOR ---
+        const toolbarOptions = [
+            [{ 'header': [1, 2, false] }],
+            ['bold', 'italic', 'underline', 'blockquote'],
+            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+            ['link', 'image', 'video'],
+            ['clean']
+        ];
+        const quill = new Quill('#editor', {
+            theme: 'snow',
+            modules: { toolbar: toolbarOptions },
+            placeholder: 'Escribe aquí...'
+        });
+
+        const htmlOutput = document.getElementById('html-output');
+        const docTitleInput = document.getElementById('docTitle');
+        let currentDraftId = null;
+        let isCompressed = false;
+
+        function prettierHTML(html) {
+            const blockTags = ['p', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'blockquote', 'div', 'iframe', 'figure'];
+            let formatted = html;
+            blockTags.forEach(tag => {
+                formatted = formatted.replace(new RegExp(`<${tag}`, 'g'), `\n<${tag}`);
+                formatted = formatted.replace(new RegExp(`<\/${tag}>`, 'g'), `<\/${tag}>\n`);
+            });
+            return formatted.replace(/\n\s*\n/g, '\n').trim();
+        }
+
+        function updateOutput() {
+            let html = quill.root.innerHTML;
+            html = html.replace(/<p><br><\/p>/g, "");
+            if (html === "<br>") html = "";
+            if (!isCompressed && html !== "") {
+                html = prettierHTML(html);
+            } else if (isCompressed) {
+                html = html.replace(/\n/g, '');
+            }
+            htmlOutput.value = html;
+        }
+        quill.on('text-change', updateOutput);
+
+        function toggleCompression() {
+            isCompressed = !isCompressed;
+            const btn = document.getElementById('compressBtn');
+            btn.innerHTML = isCompressed ? '<i class="fas fa-expand-alt"></i>' : '<i class="fas fa-compress-alt"></i>';
+            showNotification(isCompressed ? 'Comprimido' : 'Expandido');
+            updateOutput();
+        }
+
+        // --- STORAGE ---
+        function getDrafts() {
+            const data = localStorage.getItem('webcrafter_final_db');
+            return data ? JSON.parse(data) : [];
+        }
+        function saveDrafts(data) {
+            localStorage.setItem('webcrafter_final_db', JSON.stringify(data));
+            renderSidebar();
+        }
+
+        function createNewDraft() {
+            currentDraftId = Date.now();
+            docTitleInput.value = '';
+            quill.root.innerHTML = '';
+            if(window.innerWidth < 900 && document.getElementById('sidebar').classList.contains('open')) toggleSidebar();
+            docTitleInput.focus();
+            renderSidebar();
+            showNotification('Nuevo borrador');
+        }
+
+        function saveCurrentDraft() {
+            const title = docTitleInput.value.trim() || 'Sin Título';
+            const content = quill.root.innerHTML;
+            let drafts = getDrafts();
+            if (!currentDraftId) currentDraftId = Date.now();
+            const idx = drafts.findIndex(d => d.id === currentDraftId);
+            const draft = { id: currentDraftId, title, content, date: new Date().toLocaleDateString() };
+            if (idx >= 0) drafts[idx] = draft; else drafts.unshift(draft);
+            saveDrafts(drafts);
+            showNotification('Guardado');
+        }
+
+        function loadDraft(id) {
+            const draft = getDrafts().find(d => d.id === id);
+            if (draft) {
+                currentDraftId = draft.id;
+                docTitleInput.value = draft.title;
+                quill.clipboard.dangerouslyPasteHTML(draft.content);
+                if(window.innerWidth < 900) toggleSidebar();
+                renderSidebar();
+            }
+        }
+
+        function deleteDraft(id, e) {
+            e.stopPropagation();
+            if(confirm('¿Eliminar?')) {
+                const drafts = getDrafts().filter(d => d.id !== id);
+                saveDrafts(drafts);
+                if (currentDraftId === id) createNewDraft();
+                showNotification('Eliminado', 'error');
+            }
+        }
+
+        function renderSidebar() {
+            const list = document.getElementById('fileList');
+            list.innerHTML = '';
+            getDrafts().forEach(d => {
+                const li = document.createElement('li');
+                li.className = `file-item ${d.id === currentDraftId ? 'active' : ''}`;
+                li.onclick = () => loadDraft(d.id);
+                li.innerHTML = `
+                    <div class="file-info"><strong>${d.title}</strong><small>${d.date}</small></div>
+                    <button class="delete-btn" onclick="deleteDraft(${d.id}, event)"><i class="fas fa-trash"></i></button>
+                `;
+                list.appendChild(li);
+            });
+        }
+
+        function copyToClipboard() {
+            htmlOutput.select();
+            document.execCommand('copy');
+            showNotification('Copiado al portapapeles');
+        }
+
+        renderSidebar();
+        if (getDrafts().length === 0) createNewDraft();
+
+    </script>
+</body>
+</html>
